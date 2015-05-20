@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Firefly</title>
+  <link rel="stylesheet" href="../public/css/layout.css">
+  <link rel="stylesheet" href="../public/css/main.css">
+</head>
+<body>
+  
+  <div id="nav">
+    <header id="nav-header">
+      <h1 id="nav-user"></h1>
+    </header>
+    <ul id="nav-list">
+      <li class="nav-item nav-item-current" id="nav-item-devices">
+        <span class="nav-item-icon nav-item-icon-devices"></span>
+        <span class="nav-item-text">Devices</span>
+      </li>
+      <li class="nav-item" id="nav-item-received">
+        <span class="nav-item-icon nav-item-icon-received"></span>
+        <span class="nav-item-text">Received</span>
+      </li>
+      <!-- <li class="nav-item" id="nav-item-sent">
+        <span class="nav-item-icon nav-item-icon-sent"></span>
+        <span class="nav-item-text">Sent</span>
+      </li> -->
+      <li class="nav-item" id="nav-item-setting">
+        <span class="nav-item-icon nav-item-icon-setting"></span>
+        <span class="nav-item-text">Setting</span>
+      </li>
+    </ul>
+  </div>
+
+  <div id="main">
+    <section class="section section-current" id="section-devices" index="0">
+      <input type="file" id="file">
+      <iframe src="" id="iframe"></iframe>
+      <ul id="device-list"></ul>
+    </section>
+
+    <section class="section" id="section-received" index="1">
+      <ul id="received-list"></ul>
+    </section>
+
+    <!-- <section class="section" id="section-sent" index="2">
+    </section> -->
+
+    <section class="section" id="section-setting" index="3">
+      <div id="qrcode"></div>
+      <h2 id="host"></h2>
+      <p class="setting-field">
+        <label for="" class="setting-label">Name For Your Device: </label>
+        <input type="text" class="setting-input" id="setting-name">
+      </p>
+      <br><br>
+      <p class="setting-field">
+        <label for="" class="setting-label">Download Directory: </label>
+        <input type="radio" name="dir" id="dir-ask" value="ask">
+        <label for="" class="setting-label">Always Ask</label>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <input type="radio" name="dir" id="dir-default" value="default">
+        <label for="" class="setting-label">Use <a href="#" id="dir-link" title="Click To Select Directory">Default Directory</a></label>
+      </p>
+      <br><br>
+      <p class="setting-field">
+        <input type="checkbox" id="del-keep" value="keep">
+        <label for="" class="setting-label">Keep Files When Deleting</label>
+      </p>
+    </section>
+  </div>
+
+  <div id="progress">
+    <img src="../public/img/loading.gif" alt="">
+    <h3></h3>
+  </div>
+
+  <script src="../public/js/jquery-2.1.3.min.js"></script>
+  <script src="../public/js/qrcode.min.js"></script>
+  <script src="../public/js/template.js"></script>
+  <script src="../public/js/main.js"></script>
+
+</body>
+</html>
