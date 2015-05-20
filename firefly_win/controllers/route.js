@@ -25,7 +25,7 @@ exports.id = function (req, res) {
   res.end(JSON.stringify({
     name : storage.getLocalStorage('name'),
     url : server.getBaseUrl(),
-    type : 'mac'
+    type : 'win'
   }))
 }
 
