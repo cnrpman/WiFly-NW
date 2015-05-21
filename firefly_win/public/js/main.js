@@ -9,6 +9,8 @@
   var server = require('../controllers/server'),
       storage = require('../controllers/storage');
 
+  var slicer=require('../controllers/slicer')
+
   var peers = {};
   var prefix = '', suffix = 1, selfSuffix = 0;
   var targetNum, targetUrl;
@@ -177,7 +179,6 @@
     updateDirDefault : function (e) {
       e.preventDefault();
       var dir = iconv.decode(execSync('.\\extensions\\SHBrowseForFolder.exe'),'GBK')
-      console.log(dir)
       if (dir == '') {
         alert('Failed To Update Download Directory');
       } else {
@@ -299,7 +300,7 @@
           }
         }, 100);
       });
-    },
+    },/*
     performSend : function (file) {
       var fs = require('fs');
 
@@ -336,6 +337,61 @@
       }).on('data', function (data) {
         Page.updateProgress(targetNum, data.toString());
       });
+    },*/
+
+    performSend : function (file) {
+      var fs = require('fs');
+
+      var name=file.path.split('\\').pop()
+      var lpath=file.path.substring(0,file.path.length-name.length)
+      var hidenDirPath=lpath+'.'+name//without last'/'
+      slicer.slice(file.path,function(N){
+         slicer.setTotalBlock(file.path,N)
+        function emit(tot){
+          var data = {}
+          data.file = fs.createReadStream(hidenDirPath+'/'+name+'.'+tot);
+          data.name = file.name+'.'+tot;
+          data.size = fs.statSync(hidenDirPath+'/'+name+'.'+tot).size
+          data.type = file.type;
+          console.log(data.name+','+data.size)
+          data.from = storage.getLocalStorage('name');
+
+          request.post({url : targetUrl, formData : data}, function (err, res, body) {
+
+            $('#device-' + targetNum)
+            .find('.device-percentage')
+            .text('');
+
+            $('#device-' + targetNum)
+            .find('.device-progress-outer')
+            .hide();
+
+            if (err || res.statusCode != 200) {
+              $('#device-' + targetNum)
+              .find('.device-status')
+              .removeClass('device-status-success')
+              .addClass('device-status-error')
+              .text('error');
+            } else {
+              console.log("setting")
+              slicer.setSuccessBlock(file.path,tot+1);
+              if(tot+1!=N)
+                emit(tot+1)
+              else{
+                $('#device-' + targetNum)
+                .find('.device-status')
+                .removeClass('device-status-error')
+                .addClass('device-status-success')
+                .text('√');
+              }
+            }
+          }).on('data', function (data) {
+            Page.updateProgress(targetNum, data.toString());
+          });
+        }
+
+        emit(0)
+      })
     }
   };
 
