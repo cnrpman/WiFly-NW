@@ -58,7 +58,6 @@ exports.setSuccessBlock=function(path,num){//only invoke by uploaders(client)
 			jObj=JSON.parse(data)
 	}
 	catch(ENOENT){
-
 	}
 
 	jObj.blockN=num
@@ -78,10 +77,33 @@ exports.setTotalBlock=function(path,num,srcName,dstUrl){//only invoke by uploade
 	jObj.blockTot=num
 	jObj.blockN=0
 	jObj.from=srcName
-	jObj.to=dstName
+	jObj.to=dstUrl
 	console.log(jObj)
 	fs.writeFileSync(hidenDirPath+'\\'+name+'.download',JSON.stringify(jObj))
 	console.log("setTotalBlockSuccessfully")
 
 	return jboj;
+}
+
+exports.checkIsExistSending=function(path,targetUrl){
+	var name=path.split('\\').pop()
+	var lpath=path.substring(0,path.length-name.length)
+	var hidenDirPath=lpath+'.'+name//without last'/'
+
+	var jObj={}
+	try{
+		var data=fs.readFileSync(hidenDirPath+'\\'+name+'.download')
+		if(data!='')
+			jObj=JSON.parse(data)
+	}
+	catch(ENOENT){
+		return -1//no previous upload exist
+	}
+
+	if(jObj.to!=targetUrl){
+		fs.unlinkSync(hidenDirPath+'\\'+name+'.download')
+		return -1//url inconform
+	}
+
+	return jObj.blockN
 }

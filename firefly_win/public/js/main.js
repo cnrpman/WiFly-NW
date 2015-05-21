@@ -348,15 +348,18 @@
       var lpath=file.path.substring(0,file.path.length-name.length)
       var hidenDirPath=lpath+'.'+name//without last'/'
 
-      if(checkIsExistSending(file.path,targetUrl)){
-      	emit(getToIndex(file.path))
+      var ret=checkIsExistSending(file.path,targetUrl);
+      if(ret>=0)
+      	emit(ret)//do resume
       }
+      //do init
       slicer.slice(file.path,function(N){
         var headData=slicer.setTotalBlock(file.path,N,storage.getLocalStorage('name'),targetUrl);
         request.post({url : targetUrlHead, formData : headData}, function (err, res, body) {
         	if (err || res.statusCode != 200)
+        		console("headPost lost");
         	else{
-		    	emit(0,N)
+		    	emit(0,N);
 		 	}
         });
       });
