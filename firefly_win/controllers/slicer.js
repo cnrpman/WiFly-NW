@@ -68,7 +68,7 @@ exports.setSuccessBlock=function(path,num){//only invoke by uploaders(client)
 	
 }
 
-exports.setTotalBlock=function(path,num){//only invoke by uploaders(client)
+exports.setTotalBlock=function(path,num,srcName,dstUrl){//only invoke by uploaders(client)
 	var name=path.split('\\').pop()
 	var lpath=path.substring(0,path.length-name.length)
 	var hidenDirPath=lpath+'.'+name//without last'/'
@@ -77,7 +77,11 @@ exports.setTotalBlock=function(path,num){//only invoke by uploaders(client)
 
 	jObj.blockTot=num
 	jObj.blockN=0
+	jObj.from=srcName
+	jObj.to=dstName
 	console.log(jObj)
 	fs.writeFileSync(hidenDirPath+'\\'+name+'.download',JSON.stringify(jObj))
 	console.log("setTotalBlockSuccessfully")
+
+	return jboj;
 }

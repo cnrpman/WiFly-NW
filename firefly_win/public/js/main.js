@@ -13,7 +13,7 @@
 
   var peers = {};
   var prefix = '', suffix = 1, selfSuffix = 0;
-  var targetNum, targetUrl;
+  var targetNum, targetUrl, targetHeadUrl;
 
   var host = server.getBaseUrl();
 
@@ -226,14 +226,16 @@
       e.stopPropagation();
       var num = $(this).parent().parent().attr('id').split('-').pop();
       var target = peers[num];
-      var url;
+      var url,headUrl;
       if (target.type == 'ios') {
         url = target.url.replace(/:12580/, '') + 'upload';
       } else  {
         url = target.url + 'upload';
+        headUrl = target.url+'uploadHead'
       }
       targetNum = num;
       targetUrl = url;
+      targetHeadUrl = headUrl;
       $('#file').click();
     },
     chat : function (e) {
@@ -345,55 +347,63 @@
       var name=file.path.split('\\').pop()
       var lpath=file.path.substring(0,file.path.length-name.length)
       var hidenDirPath=lpath+'.'+name//without last'/'
+
+      if(checkIsExistSending(file.path,targetUrl)){
+      	emit(getToIndex(file.path))
+      }
       slicer.slice(file.path,function(N){
-         slicer.setTotalBlock(file.path,N)
-        function emit(tot){
-          var data = {}
-          data.file = fs.createReadStream(hidenDirPath+'/'+name+'.'+tot);
-          data.name = file.name+'.'+tot;
-          data.size = fs.statSync(hidenDirPath+'/'+name+'.'+tot).size
-          data.type = file.type;
-          console.log(data.name+','+data.size)
-          data.from = storage.getLocalStorage('name');
+        var headData=slicer.setTotalBlock(file.path,N,storage.getLocalStorage('name'),targetUrl);
+        request.post({url : targetUrlHead, formData : headData}, function (err, res, body) {
+        	if (err || res.statusCode != 200)
+        	else{
+		    	emit(0,N)
+		 	}
+        });
+      });
+    },
 
-          request.post({url : targetUrl, formData : data}, function (err, res, body) {
+	  function emit(tot,N){
+	    var data = {}
+	    data.file = fs.createReadStream(hidenDirPath+'/'+name+'.'+tot);
+	    data.name = file.name+'.'+tot;
+	    data.size = fs.statSync(hidenDirPath+'/'+name+'.'+tot).size
+	    data.type = file.type;
+	    data.from = storage.getLocalStorage('name');
 
-            $('#device-' + targetNum)
-            .find('.device-percentage')
-            .text('');
+	    request.post({url : targetUrl, formData : data}, function (err, res, body) {
 
-            $('#device-' + targetNum)
-            .find('.device-progress-outer')
-            .hide();
+	        $('#device-' + targetNum)
+	        .find('.device-percentage')
+	        .text('');
 
-            if (err || res.statusCode != 200) {
-              $('#device-' + targetNum)
-              .find('.device-status')
-              .removeClass('device-status-success')
-              .addClass('device-status-error')
-              .text('error');
-            } else {
-              console.log("setting")
-              slicer.setSuccessBlock(file.path,tot+1);
-              if(tot+1!=N)
-                emit(tot+1)
-              else{
-                $('#device-' + targetNum)
-                .find('.device-status')
-                .removeClass('device-status-error')
-                .addClass('device-status-success')
-                .text('√');
-              }
-            }
-          }).on('data', function (data) {
-            Page.updateProgress(targetNum, data.toString());
-          });
-        }
+	        $('#device-' + targetNum)
+	        .find('.device-progress-outer')
+	        .hide();
 
-        emit(0)
-      })
-    }
-  };
+	        if (err || res.statusCode != 200) {
+	          $('#device-' + targetNum)
+	          .find('.device-status')
+	          .removeClass('device-status-success')
+	          .addClass('device-status-error')
+	          .text('error');
+	        } else {
+	          console.log("setting")
+	          slicer.setSuccessBlock(file.path,tot+1);
+	          if(tot+1!=N)
+	            emit(tot+1)
+	          else{
+	            $('#device-' + targetNum)
+	            .find('.device-status')
+	            .removeClass('device-status-error')
+	            .addClass('device-status-success')
+	            .text('√');
+	          }
+	        }
+	      }).on('data', function (data) {
+	        Page.updateProgress(targetNum, data.toString());
+	      });
+	    }
+	};
 
   var Core = {
     init : function () {
