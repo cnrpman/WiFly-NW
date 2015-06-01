@@ -1,6 +1,9 @@
-var fs=require('fs')
+var fs=require('fs'),
+    crypto = require('crypto');
 
-var blocksz=1024;
+var storage = require('./storage');
+
+var CHUNKSZ=1024;
 
 exports.slice = function(path,callback){//[ Path of the file to slice ] -> Number of blocks
 	console.log(path)
@@ -20,8 +23,8 @@ exports.slice = function(path,callback){//[ Path of the file to slice ] -> Numbe
 	}
 
 	var tot=0,counter=0;
-	for(var lptr=0;lptr<fsize;lptr+=blocksz){
-		rptr=Math.min(lptr+blocksz,fsize)-1
+	for(var lptr=0;lptr<fsize;lptr+=CHUNKSZ){
+		rptr=Math.min(lptr+CHUNKSZ,fsize)-1
 		var rstream = fs.createReadStream(path,{start:lptr,end:rptr});
 		var wstream = fs.createWriteStream(hidenDirPath+'\\'+name+'.'+(tot++))
 		wstream.on('close',function(){
@@ -46,64 +49,43 @@ exports.merge = function(lpath,name){//[ Path of the file to sav, Name of the fi
 	}
 }
 
-exports.setSuccessBlock=function(path,num){//only invoke by uploaders(client)
-	var name=path.split('\\').pop()
-	var lpath=path.substring(0,path.length-name.length)
-	var hidenDirPath=lpath+'.'+name//without last'/'
-
-	var jObj={}
-	try{
-		var data=fs.readFileSync(hidenDirPath+'\\'+name+'.download')
-		if(data!='')
-			jObj=JSON.parse(data)
-	}
-	catch(ENOENT){
-	}
-
-	jObj.blockN=num
-	console.log(jObj)
-	fs.writeFileSync(hidenDirPath+'\\'+name+'.download',JSON.stringify(jObj))
-	console.log("setSuccessBlockSuccessfully")
-	
+exports.getChunkNumFromSize = function(size){
+	return Math.ceil(size / CHUNKSZ);
 }
 
-exports.setTotalBlock=function(path,num,srcName,dstUrl){//only invoke by uploaders(client)
-	var name=path.split('\\').pop()
-	var lpath=path.substring(0,path.length-name.length)
-	var hidenDirPath=lpath+'.'+name//without last'/'
-
-	var jObj={}
-
-	jObj.blockTot=num
-	jObj.blockN=0
-	jObj.from=srcName
-	jObj.to=dstUrl
-	console.log(jObj)
-	fs.writeFileSync(hidenDirPath+'\\'+name+'.download',JSON.stringify(jObj))
-	console.log("setTotalBlockSuccessfully")
-
-	return jboj;
+//sender(uploader) ONLY
+exports.setSuccessChunk = function(md5,num){
+	storage.setLocalStorage("upload_lstChunk_"+md5,num);
 }
 
-exports.checkIsExistSending=function(path,targetUrl){
-	var name=path.split('\\').pop()
-	var lpath=path.substring(0,path.length-name.length)
-	var hidenDirPath=lpath+'.'+name//without last'/'
+/*
+exports.setTotalChunk = function(md5,num){
+	storage.setLocalStorage("upload_totChunk_"+md5,num);
+}
+*/
 
-	var jObj={}
-	try{
-		var data=fs.readFileSync(hidenDirPath+'\\'+name+'.download')
-		if(data!='')
-			jObj=JSON.parse(data)
-	}
-	catch(ENOENT){
-		return -1//no previous upload exist
-	}
+exports.getSuccessChunk = function(md5){
+	return storage.getLocalStorage("upload_totChunk_"+md5);
+}
 
-	if(jObj.to!=targetUrl){
-		fs.unlinkSync(hidenDirPath+'\\'+name+'.download')
-		return -1//url inconform
-	}
+/*
+exports.getTotalChunk = function(md5){
+	return storage.getLocalStorage("upload_totChunk_"+md5);
+}
+*/
 
-	return jObj.blockN
+//receiver ONLY
+exports.getTotalChunk_r = function(md5){
+	return storage.getLocalStorage("download_totChunk_"+md5);
+}
+
+exports.getMD5fromFile = function(path,callback){//callback : function(md5){}
+	var rs = fs.createReadStream(path);
+    var hash = crypto.createHash('md5');
+    rs.on('data',hash.update.bind(hash));
+    rs.on('end',function(){
+    	var md5=hash.digest('hex');
+    	console.log("controllers/slicer::getMD5fromFile  path:"+path+" md5:"+md5);
+    	callback(md5);
+    });
 }
