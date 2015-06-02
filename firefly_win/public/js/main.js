@@ -5,8 +5,7 @@
       execSync = require('child_process').execSync,
       interfaces = require('os').networkInterfaces(),
       
-      iconv = require('iconv-lite'),
-      crypto = require('crypto');
+      iconv = require('iconv-lite');
 
   var server = require('../controllers/server'),
       storage = require('../controllers/storage');
@@ -15,7 +14,7 @@
 
   var peers = {};
   var prefix = '', suffix = 1, selfSuffix = 0;
-  var targetNum, targetUrl, targetHeadUrl;
+  var targetNum, targetUrl, targetHeadUrl, targetChunkUrl;
 
 
   var host = server.getBaseUrl();
@@ -234,11 +233,13 @@
         url = target.url.replace(/:12580/, '') + 'upload';
       } else  {
         url = target.url + 'upload';
-        headUrl = target.url+'uploadHead'
+        headUrl = target.url+'uploadHead';
+        chunkUrl = target.url + 'uploadChunk';
       }
       targetNum = num;
       targetUrl = url;
       targetHeadUrl = headUrl;
+      targetChunkUrl = chunkUrl;
       $('#file').click();
     },
     chat : function (e) {
@@ -271,7 +272,8 @@
         if (targetUrl.indexOf(':12580') < 0) {
           Page.sendToIos(file);
         } else {
-          Page.performSend(file);
+        	Page.sendInChunk(file);
+          //Page.performSend(file);
         }
       }
     },
@@ -307,95 +309,90 @@
       });
     },
 
-    performSend : function (file) {
-      var tot_err_this_sending=0;
+    sendInChunk : function (file) {
       var fs = require('fs');
 
-      var name=file.path.split('\\').pop()
-      var lpath=file.path.substring(0,file.path.length-name.length)
-      var hidenDirPath=lpath+'.'+name//without last'/'
+      var CHUNKSZ=1024;
 
-      var N=0//total block num
+      var tot_err_this_sending=0;
 
-      function emit(tot){
-			  var fs = require('fs');
+      var file_name=file.path.split('\\').pop();
+      var file_leftPath=file.path.substring(0,file.path.length-name.length);
+      var file_cfgPath=file_leftPath+'.'+file_name+'/';
+      var file_chunkNum=slicer.getChunkNumFromSize(file.size);
 
-			  var data = {}
-			  data.file = fs.createReadStream(hidenDirPath+'/'+name+'.'+tot);
-			  data.name = file.name+'.'+tot;
-			  data.size = fs.statSync(hidenDirPath+'/'+name+'.'+tot).size
-			  data.type = file.type;
-			  data.from = storage.getLocalStorage('name');
+      slicer.getMD5fromFile(file.path,function(file_md5){
 
-			  request.post({url : targetUrl, formData : data}, function (err, res, body) {
-
-		      $('#device-' + targetNum)
-		      .find('.device-percentage')
-		      .text('');
-
-		      $('#device-' + targetNum)
-		      .find('.device-progress-outer')
-		      .hide();
-
-		      if (err || res.statusCode != 200) {
-                tot_err_this_sending++;
-                if(tot_err_this_sending>5){//if retry over 5 times
-		          $('#device-' + targetNum)
-		          .find('.device-status')
-		          .removeClass('device-status-success')
-		          .addClass('device-status-error')
-		          .text('error');
-		        }
-		        else{
-                  emit(tot);//resend
-		        }
-		      } else {//successfully emit 1 package
-		        slicer.setSuccessBlock(file.path,tot+1);
-		        if(tot+1!=N)//continue sending
-		          emit(tot+1)
-		        else{
-		          $('#device-' + targetNum)
-		          .find('.device-status')
-		          .removeClass('device-status-error')
-		          .addClass('device-status-success')
-		          .text('√');
-		        }
-		      }
-		    }).on('data', function (data) {
-		      Page.updateProgress(targetNum, data.toString());
-		    });
-	 		}
-
-      var ret=slicer.checkIsExistSending(file.path,targetUrl);
-      curBlock=ret[0];
-     	if(curBlock>=0){
-     		N=ret[1];
-    		emit(curBlock)//do resume
-   		}
-   		else{
-      //do init
-	      slicer.slice(file.path,function(N){
-	        slicer.setTotalBlock(file.path,N,storage.getLocalStorage('name'),targetUrl);
-	        
-					var data = {}
-				  data.file = fs.createReadStream(hidenDirPath+'\\'+name+'.download');
-				  console.log(hidenDirPath+'\\'+name+'.download')
-				  data.name = name+'.download'
-				  data.size = fs.statSync(hidenDirPath+'\\'+name+'.download').size
+      	function emit(seq){
+				  var data = {}
+				  data.file = fs.createReadStream(file_cfgPath+file_name+'.'+seq);
+				  data.name = file.name+'.'+seq;
+				  data.size = (seq+1==file_chunkNum?file.size-seq*CHUNKSZ:CHUNKSZ);
 				  data.type = file.type;
 				  data.from = storage.getLocalStorage('name');
 
-				  console.log(data.size+','+data.type+','+data.name+','+targetHeadUrl)
+				  request.post({url : targetChunkUrl, formData : data}, function (err, res, body) {
 
-				  request.post({url : targetHeadUrl, formData : data}, function (err, res, body){
-	        	if (err || res.statusCode != 200)
-	        		console.log("headPost lost");
-	        	else{
-			    		emit(0);
-			 			}
-	        });
-	      });
-   	  }
+			      $('#device-' + targetNum)
+			      .find('.device-percentage')
+			      .text('');
+
+			      $('#device-' + targetNum)
+			      .find('.device-progress-outer')
+			      .hide();
+
+			      if (err || res.statusCode != 200) {
+		            tot_err_this_sending++;
+		            if(tot_err_this_sending>5){//if retry over 5 times
+			          $('#device-' + targetNum)
+			          .find('.device-status')
+			          .removeClass('device-status-success')
+			          .addClass('device-status-error')
+			          .text('error');
+			        }
+			        else{
+		              emit(tot);//resend
+			        }
+			      } else {//successfully emit 1 package
+			        slicer.setSuccessChunk(file_md5,tot+1);
+			        if(tot+1!=N)//continue sending
+			          emit(tot+1);
+			        else{
+			          $('#device-' + targetNum)
+			          .find('.device-status')
+			          .removeClass('device-status-error')
+			          .addClass('device-status-success')
+			          .text('√');
+			        }
+			      }
+			    }).on('data', function (data) {
+			      Page.updateProgress(targetNum, data.toString());
+			    });
+			  }
+
+	      var curChunk = slicer.getSuccessChunk(file_md5);
+	     	if(curChunk!=undefined){
+	    		emit(curChunk)//do resume
+	   		}
+	   		else{
+	      //do init
+		      slicer.slice(file.path,function(){
+					  var data = {}
+					  data.file_md5 = file_md5;
+					  data.file_name = file_name;
+					  data.file_size = file.size;
+
+					  request.post({url : targetHeadUrl, form : data}, function (err, res, body){
+		        	if (err || res.statusCode != 200)
+		        	  console.log("headPost lost");
+		        	else{
+		        		slicer.setSuccessChunk(file_md5,0);
+				        emit(0);
+				    	}
+		        });
+		      });
+	   	  }
+      });
     }
   };
 

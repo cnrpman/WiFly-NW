@@ -54,7 +54,7 @@ exports.getChunkNumFromSize = function(size){
 }
 
 //sender(uploader) ONLY
-exports.setSuccessChunk = function(md5,num){
+exports.setSuccessChunk = function(md5,num){//current success seq+1, = the next chunk to be emit
 	storage.setLocalStorage("upload_lstChunk_"+md5,num);
 }
 
